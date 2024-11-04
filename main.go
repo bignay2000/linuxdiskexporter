@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -34,9 +35,20 @@ func main() {
 
 	// Define the API endpoint for getting all disk statistics
 	router.HandleFunc("/diskstats", getDiskStats).Methods("GET")
-
-	// Start the server on port 8080
-	log.Fatal(router.ListenAndServe(":8080"))
+	srv := &http.Server{
+		Addr: "0.0.0.0:8080",
+		// Good practice to set timeouts to avoid Slowloris attacks.
+		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 60,
+		Handler:      router, // Pass our instance of gorilla/mux in.
+	}
+	// Run our server in a goroutine so that it doesn't block.
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			log.Println(err)
+		}
+	}()
 }
 
 // getDiskStats handles GET requests to the /diskstats endpoint.
